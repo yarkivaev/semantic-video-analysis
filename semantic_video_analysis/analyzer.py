@@ -6,12 +6,12 @@ from PIL import Image
 from datetime import datetime
 from moviepy import VideoFileClip
 from transformers import BlipProcessor, BlipForConditionalGeneration
-
+import whisper
 
 class VideoAnalyzer:
     """Main class for analyzing videos and generating semantic descriptions."""
     
-    def __init__(self, device=None, model_name="Salesforce/blip-image-captioning-base"):
+    def __init__(self, device=None, model_name="Salesforce/blip-image-captioning-large", enable_audio=True):
         """Initialize the VideoAnalyzer with specified device and model.
         
         Args:
@@ -22,6 +22,10 @@ class VideoAnalyzer:
         self.processor = BlipProcessor.from_pretrained(model_name)
         self.model = BlipForConditionalGeneration.from_pretrained(model_name).to(self.device)
         
+        self.enable_audio = enable_audio
+        if self.enable_audio:
+          self.audio_model = whisper.load_model("base", )
+
         os.makedirs("extracted_frames", exist_ok=True)
     
     def extract_key_frames(self, video_path, num_frames=5):
@@ -85,6 +89,16 @@ class VideoAnalyzer:
         created = datetime.utcfromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S UTC')
         return size, created
     
+    def transcribe_audio(self, video_path):
+        """Extract and transcribe audio from a video using Whisper."""
+        try:
+            # Whisper can take the video path directly
+            result = self.audio_model.transcribe(video_path)
+            return result["text"]
+        except Exception as e:
+            print(f"Audio transcription failed: {e}")
+            return ""
+
     def describe_video(self, video_path, num_frames=5):
         """Generate a comprehensive semantic description of a video.
         
@@ -115,6 +129,11 @@ class VideoAnalyzer:
         frame_paths = self.extract_key_frames(video_path, num_frames=num_frames)
         frame_captions = [self.generate_caption(fp) for fp in frame_paths]
         
+        audio_transcript = ""
+        if self.enable_audio and has_audio:
+          print("Transcribing audio...")
+          audio_transcript = self.transcribe_audio(video_path)
+
         # Extract tags from captions
         tags = list(set(word for cap in frame_captions for word in cap.lower().split() 
                        if word.isalpha() and len(word) > 3))[:5]
@@ -127,7 +146,8 @@ class VideoAnalyzer:
                 "filePath": file_path,
                 "fileSize": file_size,
                 "createdAt": created_at,
-                "description": " ".join(set(frame_captions[:2])),
+                "description": " ".join(set(frame_captions)),
+                # "description": " ".join(set(frame_captions[:2])),
                 "tags": tags
             },
             "duration": duration,
@@ -152,7 +172,8 @@ class VideoAnalyzer:
                     "indoor" if any(word in cap.lower() for word in ["room", "bed", "table", "chair"]) 
                     else "outdoor" for cap in frame_captions
                 ])),
-                "estimatedMood": "neutral"
+                "estimatedMood": "neutral",
+                "audioTranscript": audio_transcript if audio_transcript else None
             }
         }
         
@@ -172,7 +193,7 @@ class VideoAnalyzer:
         
         for path in video_paths:
             print(f"Processing: {path}")
-            desc = self.describe_video(path)
+            desc = self.describe_video(path, num_frames=10)
             all_descriptions.append(desc)
             
             output_file = os.path.join(
