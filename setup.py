@@ -40,6 +40,10 @@ setup(
         "mcp": [
             "mcp>=1.0.0",
         ],
+        "test": [
+            "pytest>=7.0.0",
+            "pytest-asyncio>=0.21.0",
+        ],
     },
     entry_points={
         "console_scripts": [

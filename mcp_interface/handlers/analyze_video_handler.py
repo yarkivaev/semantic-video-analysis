@@ -12,12 +12,19 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from semantic_video_analysis.strategies import FrameSelectionAnalysis, PeriodicSelectionStrategy
-from semantic_video_analysis.models.blip_model import BlipModel
-from PIL import Image
 
 
 class AnalyzeVideoHandler(BaseHandler):
     """Handler for the analyze_video tool."""
+    
+    def __init__(self, frame_analysis_fn=None):
+        """Initialize the handler with a frame analysis function.
+        
+        Args:
+            frame_analysis_fn: Function that takes a frame path and returns analysis text.
+                              If None, a default placeholder function will be used.
+        """
+        self.frame_analysis_fn = frame_analysis_fn
     
     def get_tool_definition(self) -> types.Tool:
         """Return the tool definition for video analysis."""
@@ -60,49 +67,42 @@ class AnalyzeVideoHandler(BaseHandler):
             raise ValueError(f"Video file not found: {video_path}")
         
         try:
-            # Initialize BLIP model
-            with BlipModel() as blip_model:
-                # Create frame analysis function using BLIP
+            # Use injected frame analysis function or default placeholder
+            if self.frame_analysis_fn is None:
                 def frame_analysis_fn(frame_path: str) -> str:
-                    try:
-                        # Load the frame image
-                        image = Image.open(frame_path)
-                        # Generate caption using BLIP
-                        caption = blip_model.generate_caption(image)
-                        return caption
-                    except Exception as e:
-                        # Fallback to generic description if BLIP fails
-                        return f"Frame analysis failed for {os.path.basename(frame_path)} (Error: {str(e)})"
-                
-                # Create periodic selection strategy
-                strategy = PeriodicSelectionStrategy.from_video_file(video_path, period)
-                
-                # Create and run analysis
-                analyzer = FrameSelectionAnalysis(video_path, frame_analysis_fn, strategy)
-                media_context = analyzer.analyse()
-                
-                # Format the results
-                result = {
-                    "video_path": video_path,
-                    "analysis_period": period,
-                    "total_actions": len(media_context.actions),
-                    "actions": []
-                }
-                
-                for action in media_context.actions:
-                    result["actions"].append({
-                        "start": action.start,
-                        "end": action.end,
-                        "duration": action.end - action.start,
-                        "content": action.content
-                    })
-                
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(result, indent=2)
-                    )
-                ]
+                    return f"Frame analysis for {os.path.basename(frame_path)}"
+            else:
+                frame_analysis_fn = self.frame_analysis_fn
+            
+            # Create periodic selection strategy
+            strategy = PeriodicSelectionStrategy.from_video_file(video_path, period)
+            
+            # Create and run analysis
+            analyzer = FrameSelectionAnalysis(video_path, frame_analysis_fn, strategy)
+            media_context = analyzer.analyse()
+            
+            # Format the results
+            result = {
+                "video_path": video_path,
+                "analysis_period": period,
+                "total_actions": len(media_context.actions),
+                "actions": []
+            }
+            
+            for action in media_context.actions:
+                result["actions"].append({
+                    "start": action.start,
+                    "end": action.end,
+                    "duration": action.end - action.start,
+                    "content": action.content
+                })
+            
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )
+            ]
             
         except Exception as e:
             return [
