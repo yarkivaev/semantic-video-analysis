@@ -13,7 +13,7 @@ class FrameSelectionAnalysis(MediaAnalysis):
         self.frame_analysis_fn = frame_analysis_fn
         self.frame_selection_strategy = frame_selection_strategy
     
-    def analyze(self):
+    def analyse(self):
         """Analyze video by selecting frames and creating MediaContext."""
         import cv2
         

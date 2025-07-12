@@ -8,7 +8,7 @@ __version__ = "0.1.0"
 __author__ = "Your Name"
 __email__ = "your.email@example.com"
 
-from .analyzer import VideoAnalyzer
-from .cli import main
+from .media_context import MediaAnalysis, MediaContext, Action
+from .strategies import FrameSelectionAnalysis, PeriodicSelectionStrategy, FrameInfo
 
-__all__ = ["VideoAnalyzer", "main"]
+__all__ = ["MediaAnalysis", "MediaContext", "Action", "FrameSelectionAnalysis", "PeriodicSelectionStrategy", "FrameInfo"]

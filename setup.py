@@ -36,6 +36,11 @@ setup(
         "transformers>=4.30.0",
         "accelerate>=0.20.0",
     ],
+    extras_require={
+        "mcp": [
+            "mcp>=1.0.0",
+        ],
+    },
     entry_points={
         "console_scripts": [
             "semantic-video-analysis=semantic_video_analysis.cli:main",
