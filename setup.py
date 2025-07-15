@@ -35,6 +35,7 @@ setup(
         "sentence-transformers>=2.0.0",
         "transformers>=4.30.0",
         "accelerate>=0.20.0",
+        "openai-whisper @ git+https://github.com/openai/whisper.git",
     ],
     extras_require={
         "mcp": [
