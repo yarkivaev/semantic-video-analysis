@@ -55,8 +55,7 @@ async def initialize_application():
     # Create frame analysis function and handler chain
     frame_analysis_fn = create_frame_analysis_fn()
     handler_chain = HandlerChain.of(
-        AnalyzeVideoHandler(frame_analysis_fn=frame_analysis_fn)
-    ).chain(
+        AnalyzeVideoHandler(frame_analysis_fn=frame_analysis_fn),
         AnalyzeAudioHandler()
     )
 
