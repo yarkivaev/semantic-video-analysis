@@ -16,7 +16,7 @@ class AudioToTextTranslator:
         self.device = device
         self.model = whisper.load_model(model_name, device=self.device)
 
-    def transcribe_audio(self, audio_path: str) -> tuple:
+    def transcribe_audio(self, audio_path: str) -> list[dict]:
         """
         Transcribes the audio from a file to text using the Whisper model.
 
@@ -24,12 +24,21 @@ class AudioToTextTranslator:
             audio_path (str): The path to the input audio file.
 
         Returns:
-
-            - str: The transcribed text.
+            list[dict]: List of transcription segments with start, end, and text.
+                       Each dict contains: {'start': float, 'end': float, 'text': str}
 
         """
         result = self.model.transcribe(audio_path)
         print(result["text"], result.get("segments", []), result["language"])
 
-        return result["text"]
+        # Extract segments with timestamps
+        segments = []
+        for segment in result.get("segments", []):
+            segments.append({
+                'start': segment['start'],
+                'end': segment['end'], 
+                'text': segment['text'].strip()
+            })
+        
+        return segments
     

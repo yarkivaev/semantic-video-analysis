@@ -18,7 +18,7 @@ import mcp.types as types
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from handlers import HandlerChain, AnalyzeVideoHandler
+from handlers import HandlerChain, AnalyzeVideoHandler, AnalyzeAudioHandler
 from semantic_video_analysis.models.blip_model import BlipModel
 from PIL import Image
 
@@ -54,7 +54,11 @@ async def initialize_application():
     
     # Create frame analysis function and handler chain
     frame_analysis_fn = create_frame_analysis_fn()
-    handler_chain = HandlerChain.of(AnalyzeVideoHandler(frame_analysis_fn=frame_analysis_fn))
+    handler_chain = HandlerChain.of(
+        AnalyzeVideoHandler(frame_analysis_fn=frame_analysis_fn)
+    ).chain(
+        AnalyzeAudioHandler()
+    )
 
 
 async def cleanup_application():

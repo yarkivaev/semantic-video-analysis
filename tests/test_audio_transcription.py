@@ -10,8 +10,8 @@ def main():
     Test script that transcribes speech from tg_video2.mp4 using VideoToAudioTranslator and AudioToTextTranslator classes.
     """
     
-    # Define file paths
-    video_file = "examples/Chocolate2_low.mp4" # change for your video
+    # Define file paths (relative to project root)
+    video_file = "../examples/Chocolate2_low.mp4" # change for your video
     audio_file = "extracted_audio.wav"
     
     # Check if video file exists
@@ -31,12 +31,18 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
     audio_to_text = AudioToTextTranslator(model_name="large-v3", device=device)
-    transcribed_text = audio_to_text.transcribe_audio(audio_file)
+    transcription_segments = audio_to_text.transcribe_audio(audio_file)
     
     print("\n" + "="*50)
     print("TRANSCRIPTION RESULTS")
     print("="*50)
-    print(f"Transcribed Text:\n{transcribed_text}")
+    print(f"Total segments: {len(transcription_segments)}")
+    print()
+    for i, segment in enumerate(transcription_segments, 1):
+        print(f"Segment {i}:")
+        print(f"  Time: {segment['start']:.2f}s - {segment['end']:.2f}s")
+        print(f"  Text: {segment['text']}")
+        print()
     print("="*50)
     
     # Clean up temporary audio file
