@@ -6,7 +6,7 @@ import torch
 import json
 import wave
 from PIL import Image
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from datetime import datetime
 
@@ -30,4 +30,4 @@ class VideoToAudioTranslator:
         """
         video = VideoFileClip(video_path)
         # Extract audio and save it to the specified output path
-        video.audio.write_audiofile(audio_output_path, verbose=False, logger=None)
+        video.audio.write_audiofile(audio_output_path, logger=None)
