@@ -182,7 +182,6 @@ extracted_frames/
 # Model cache and data files
 .cache/
 cache/
-models/
 data/
 *.pkl
 *.pickle
