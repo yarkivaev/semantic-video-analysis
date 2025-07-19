@@ -12,8 +12,8 @@ from typing import Any
 
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
-import mcp.server.stdio
 import mcp.types as types
+import mcp.server.stdio
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
