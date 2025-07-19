@@ -35,6 +35,11 @@ setup(
         "sentence-transformers>=2.0.0",
         "transformers>=4.30.0",
         "accelerate>=0.20.0",
+        "scenedetect>=0.6.6",
+        "ultralytics>=8.3.168",
+        "scipy>=1.15.3",
+        "scikit-learn>=1.2.2",
+        "scikit-image>=0.25.2",
         "openai-whisper @ git+https://github.com/openai/whisper.git",
     ],
     extras_require={

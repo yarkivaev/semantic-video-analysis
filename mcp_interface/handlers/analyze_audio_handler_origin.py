@@ -1,0 +1,113 @@
+"""Handler for video analysis tool."""
+
+import json
+import os
+from typing import Any
+
+import mcp.types as types
+from .base_handler import BaseHandler
+
+# Import from the parent directory to access the semantic_video_analysis package
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from semantic_video_analysis.strategies import FrameSelectionAnalysis, PeriodicSelectionStrategy
+
+
+class AnalyzeVideoHandler(BaseHandler):
+    """Handler for the analyze_video tool."""
+    
+    def __init__(self, frame_analysis_fn=None):
+        """Initialize the handler with a frame analysis function.
+        
+        Args:
+            frame_analysis_fn: Function that takes a frame path and returns analysis text.
+                              If None, a default placeholder function will be used.
+        """
+        self.frame_analysis_fn = frame_analysis_fn
+    
+    def get_tool_definition(self) -> types.Tool:
+        """Return the tool definition for video analysis."""
+        return types.Tool(
+            name="analyze_video",
+            description="Analyze video content and extract semantic information from frames",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "video_path": {
+                        "type": "string",
+                        "description": "Path to the video file to analyze"
+                    },
+                    "period": {
+                        "type": "number",
+                        "description": "Time period in seconds between frame selections (default: 1.0)",
+                        "default": 1.0
+                    }
+                },
+                "required": ["video_path"]
+            }
+        )
+    
+    def can_handle(self, tool_name: str) -> bool:
+        """Check if this handler can handle the analyze_video tool."""
+        return tool_name == "analyze_video"
+    
+    async def handle(self, tool_name: str, arguments: dict[str, Any] | None) -> list[types.TextContent]:
+        """Handle the analyze_video tool call."""
+        if not arguments:
+            raise ValueError("Missing arguments for analyze_video")
+        
+        video_path = arguments.get("video_path")
+        period = arguments.get("period", 1.0)
+        
+        if not video_path:
+            raise ValueError("video_path is required")
+        
+        if not os.path.exists(video_path):
+            raise ValueError(f"Video file not found: {video_path}")
+        
+        try:
+            # Use injected frame analysis function or default placeholder
+            if self.frame_analysis_fn is None:
+                def frame_analysis_fn(frame_path: str) -> str:
+                    return f"Frame analysis for {os.path.basename(frame_path)}"
+            else:
+                frame_analysis_fn = self.frame_analysis_fn
+            
+            # Create periodic selection strategy
+            strategy = PeriodicSelectionStrategy.from_video_file(video_path, period)
+            
+            # Create and run analysis
+            analyzer = FrameSelectionAnalysis(video_path, frame_analysis_fn, strategy)
+            media_context = analyzer.analyse()
+            
+            # Format the results
+            result = {
+                "video_path": video_path,
+                "analysis_period": period,
+                "total_actions": len(media_context.actions),
+                "actions": []
+            }
+            
+            for action in media_context.actions:
+                result["actions"].append({
+                    "start": action.start,
+                    "end": action.end,
+                    "duration": action.end - action.start,
+                    "content": action.content
+                })
+            
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(result, indent=2)
+                )
+            ]
+            
+        except Exception as e:
+            return [
+                types.TextContent(
+                    type="text", 
+                    text=f"Error analyzing video: {str(e)}"
+                )
+            ]

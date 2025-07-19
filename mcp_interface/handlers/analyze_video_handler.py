@@ -1,8 +1,8 @@
-"""Handler for video analysis tool."""
-
 import json
 import os
 from typing import Any
+import cv2
+import numpy as np
 
 import mcp.types as types
 from .base_handler import BaseHandler
@@ -11,7 +11,7 @@ from .base_handler import BaseHandler
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from semantic_video_analysis.strategies import FrameSelectionAnalysis, PeriodicSelectionStrategy
+from semantic_video_analysis.models.tech_analysis import analyze_video, detect_scenes
 
 
 class AnalyzeVideoHandler(BaseHandler):
@@ -30,7 +30,7 @@ class AnalyzeVideoHandler(BaseHandler):
         """Return the tool definition for video analysis."""
         return types.Tool(
             name="analyze_video",
-            description="Analyze video content and extract semantic information from frames",
+            description="Analyze video content, extract semantic information from frames, and compute scene metrics",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -38,10 +38,10 @@ class AnalyzeVideoHandler(BaseHandler):
                         "type": "string",
                         "description": "Path to the video file to analyze"
                     },
-                    "period": {
-                        "type": "number",
-                        "description": "Time period in seconds between frame selections (default: 1.0)",
-                        "default": 1.0
+                    "svm_model_path": {
+                        "type": "string",
+                        "description": "Path to the SVM model file for shot type prediction (default: svm_model.joblib)",
+                        "default": "svm_model.joblib"
                     }
                 },
                 "required": ["video_path"]
@@ -58,7 +58,7 @@ class AnalyzeVideoHandler(BaseHandler):
             raise ValueError("Missing arguments for analyze_video")
         
         video_path = arguments.get("video_path")
-        period = arguments.get("period", 1.0)
+        svm_model_path = arguments.get("svm_model_path", "svm_model.joblib")
         
         if not video_path:
             raise ValueError("video_path is required")
@@ -66,41 +66,66 @@ class AnalyzeVideoHandler(BaseHandler):
         if not os.path.exists(video_path):
             raise ValueError(f"Video file not found: {video_path}")
         
+        if not os.path.exists(svm_model_path):
+            raise ValueError(f"SVM model file not found: {svm_model_path}")
+        
         try:
+            # Run video analysis to get scene metrics
+            analysis_result = analyze_video(video_path, svm_model_path)
+            
             # Use injected frame analysis function or default placeholder
             if self.frame_analysis_fn is None:
                 def frame_analysis_fn(frame_path: str) -> str:
                     return f"Frame analysis for {os.path.basename(frame_path)}"
-            else:
-                frame_analysis_fn = self.frame_analysis_fn
             
-            # Create periodic selection strategy
-            strategy = PeriodicSelectionStrategy.from_video_file(video_path, period)
-            
-            # Create and run analysis
-            analyzer = FrameSelectionAnalysis(video_path, frame_analysis_fn, strategy)
-            media_context = analyzer.analyse()
+            # Process each scene to extract frames and generate captions
+            scenes = analysis_result["scenes"]
+            for scene in scenes:
+                start_time = scene["start_time"]
+                end_time = scene["end_time"]
+                
+                # Extract frames at 1-second intervals within the scene
+                cap = cv2.VideoCapture(video_path)
+                fps = int(cap.get(cv2.CAP_PROP_FPS))
+                frame_interval = fps  # 1 second
+                frame_captions = []
+                
+                current_time = start_time
+                while current_time < end_time:
+                    cap.set(cv2.CAP_PROP_POS_MSEC, current_time * 1000)
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    
+                    # Save frame to temporary file
+                    temp_frame_path = f"temp_frame_{int(current_time*1000)}.jpg"
+                    cv2.imwrite(temp_frame_path, frame)
+                    
+                    # Analyze frame
+                    caption = self.frame_analysis_fn(temp_frame_path)
+                    frame_captions.append({
+                        "timestamp": current_time,
+                        "caption": caption
+                    })
+                    
+                    # Clean up temporary frame
+                    os.remove(temp_frame_path)
+                    
+                    current_time += 1.0
+                
+                cap.release()
+                scene["frame_captions"] = frame_captions
             
             # Format the results
             result = {
                 "video_path": video_path,
-                "analysis_period": period,
-                "total_actions": len(media_context.actions),
-                "actions": []
+                "scenes": scenes
             }
-            
-            for action in media_context.actions:
-                result["actions"].append({
-                    "start": action.start,
-                    "end": action.end,
-                    "duration": action.end - action.start,
-                    "content": action.content
-                })
             
             return [
                 types.TextContent(
                     type="text",
-                    text=json.dumps(result, indent=2)
+                    text=json.dumps(result, indent=2, ensure_ascii=False)
                 )
             ]
             
