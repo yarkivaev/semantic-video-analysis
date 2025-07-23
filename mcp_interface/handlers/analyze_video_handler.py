@@ -47,7 +47,20 @@ class AnalyzeVideoHandler(BaseHandler):
                     },
                     "enable_technical_analysis": {
                         "type": "boolean",
-                        "description": "Enable technical analysis of frames (default: true)",
+                        "description": (
+                            "Enable comprehensive technical analysis of video frames including: \n"
+                            "- image quality metrics (clarity, contrast, brightness, sharpness, saturation), \n"
+                            "- color analysis (balance, distribution, temperature), \n"
+                            "- lens type classification. \n"
+                            "- There is also a qualitative characterization, which is based on scalar metrics and is rather inaccurate. \n"
+                            "Quality labels are assigned using fixed thresholds: "
+                            "- clarity/sharpness >400=good, >200=average, else=bad; \n"
+                            "- contrast >40=good, >20=average, else=bad; \n"
+                            "- brightness 0.3-0.7=good, 0.2-0.3 or 0.7-0.8=average, else=bad; \n"
+                            "- saturation 0.4-0.7=good, 0.2-0.4=average, else=bad; \n"
+                            "- color temperature -0.2 to 0.2=neutral, 0.2-0.3=probably_warm, >0.3=warm, -0.3 to -0.2=probably_cold, <-0.3=cold. \n"
+                            "(default: true)"
+                        ),
                         "default": True
                     }
                 },
