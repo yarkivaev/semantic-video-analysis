@@ -36,6 +36,13 @@ setup(
         "transformers>=4.30.0",
         "accelerate>=0.20.0",
         "openai-whisper @ git+https://github.com/openai/whisper.git",
+        "numpy>=1.21.0",
+        "scikit-image>=0.19.0",
+        "scikit-learn>=1.0.0",
+        "ultralytics>=8.0.0",
+        "joblib>=1.0.0",
+        "tqdm>=4.60.0",
+        "scipy>=1.7.0",
     ],
     extras_require={
         "mcp": [

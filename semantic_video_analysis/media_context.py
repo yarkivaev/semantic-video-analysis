@@ -26,13 +26,15 @@ class Action:
         start: The start time of the action.
         end: The end time of the action.
         content: Semantic description or metadata about the action.
+        technical_analysis: Optional technical analysis data for the frame/segment.
     """
     
     def __init__(
         self,
         start,
         end,
-        content
+        content,
+        technical_analysis=None
     ):
         """Initialize an Action with temporal boundaries and content.
         
@@ -40,10 +42,12 @@ class Action:
             start: The start time of the action.
             end: The end time of the action.
             content: Description or metadata about what happens during this action.
+            technical_analysis: Optional dict containing technical analysis metrics.
         """
         self.start = start
         self.end = end
         self.content = content
+        self.technical_analysis = technical_analysis
 
 class MediaContext:
     """Container for a sequence of actions that form a media's semantic context.
