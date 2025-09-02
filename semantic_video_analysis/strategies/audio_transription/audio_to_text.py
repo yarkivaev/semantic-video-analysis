@@ -5,7 +5,7 @@ class AudioToTextTranslator:
     A class to handle audio to text transcription using the Whisper model.
     """
 
-    def __init__(self, model_name: str = "large-v3", device: str = "cuda"):
+    def __init__(self, model_name: str = "base", device: str = "cuda"):
         """
         Initializes the AudioToTextTranslator with the specified model and device.
 

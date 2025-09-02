@@ -41,6 +41,12 @@ setup(
         "mcp": [
             "mcp>=1.0.0",
         ],
+        "http": [
+            "fastapi>=0.100.0",
+            "uvicorn>=0.23.0",
+            "pydantic>=2.0.0",
+            "boto3>=1.26.0",  # For S3 support
+        ],
         "test": [
             "pytest>=7.0.0",
             "pytest-asyncio>=0.21.0",

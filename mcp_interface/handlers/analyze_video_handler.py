@@ -6,6 +6,7 @@ from typing import Any
 
 import mcp.types as types
 from .base_handler import BaseHandler
+from .s3_utils import ensure_local_file
 
 # Import from the parent directory to access the semantic_video_analysis package
 import sys
@@ -36,7 +37,7 @@ class AnalyzeVideoHandler(BaseHandler):
                 "properties": {
                     "video_path": {
                         "type": "string",
-                        "description": "Path to the video file to analyze"
+                        "description": "Path to the video file to analyze (local path or s3:// URL)"
                     },
                     "period": {
                         "type": "number",
@@ -63,7 +64,10 @@ class AnalyzeVideoHandler(BaseHandler):
         if not video_path:
             raise ValueError("video_path is required")
         
-        if not os.path.exists(video_path):
+        # Handle S3 URLs
+        local_path, is_temp = await ensure_local_file(video_path)
+        
+        if not os.path.exists(local_path):
             raise ValueError(f"Video file not found: {video_path}")
         
         try:
@@ -74,14 +78,14 @@ class AnalyzeVideoHandler(BaseHandler):
             else:
                 frame_analysis_fn = self.frame_analysis_fn
             
-            # Create periodic selection strategy
-            strategy = PeriodicSelectionStrategy.from_video_file(video_path, period)
+            # Create periodic selection strategy using local path
+            strategy = PeriodicSelectionStrategy.from_video_file(local_path, period)
             
-            # Create and run analysis
-            analyzer = FrameSelectionAnalysis(video_path, frame_analysis_fn, strategy)
+            # Create and run analysis using local path
+            analyzer = FrameSelectionAnalysis(local_path, frame_analysis_fn, strategy)
             media_context = analyzer.analyse()
             
-            # Format the results
+            # Format the results (use original path in output)
             result = {
                 "video_path": video_path,
                 "analysis_period": period,
@@ -111,3 +115,10 @@ class AnalyzeVideoHandler(BaseHandler):
                     text=f"Error analyzing video: {str(e)}"
                 )
             ]
+        finally:
+            # Clean up temporary file if needed
+            if is_temp and os.path.exists(local_path):
+                try:
+                    os.unlink(local_path)
+                except:
+                    pass

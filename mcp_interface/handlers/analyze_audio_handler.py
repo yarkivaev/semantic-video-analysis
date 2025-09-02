@@ -8,6 +8,7 @@ from typing import Any
 
 import mcp.types as types
 from .base_handler import BaseHandler
+from .s3_utils import ensure_local_file
 
 # Import from the parent directory to access the semantic_video_analysis package
 import sys
@@ -20,9 +21,15 @@ from semantic_video_analysis.strategies.audio_transription.audio_to_text import 
 class AnalyzeAudioHandler(BaseHandler):
     """Handler for the analyze_audio tool."""
     
-    def __init__(self):
-        """Initialize the handler."""
+    def __init__(self, audio_translator=None):
+        """Initialize the handler.
+        
+        Args:
+            audio_translator: Pre-initialized AudioToTextTranslator instance.
+                            If None, will create one on demand (not recommended).
+        """
         super().__init__()
+        self.audio_translator = audio_translator
     
     def get_tool_definition(self) -> types.Tool:
         """Return the tool definition for audio analysis."""
@@ -34,7 +41,7 @@ class AnalyzeAudioHandler(BaseHandler):
                 "properties": {
                     "video_path": {
                         "type": "string",
-                        "description": "Path to the video file to analyze"
+                        "description": "Path to the video file to analyze (local path or s3:// URL)"
                     },
                     "model_name": {
                         "type": "string",
@@ -61,7 +68,10 @@ class AnalyzeAudioHandler(BaseHandler):
         if not video_path:
             raise ValueError("video_path is required")
         
-        if not os.path.exists(video_path):
+        # Handle S3 URLs
+        local_path, is_temp_video = await ensure_local_file(video_path)
+        
+        if not os.path.exists(local_path):
             raise ValueError(f"Video file not found: {video_path}")
         
         # Create temporary file for extracted audio
@@ -72,16 +82,21 @@ class AnalyzeAudioHandler(BaseHandler):
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
                 temp_audio_file = temp_file.name
             
-            # Step 1: Extract audio from video
-            video_to_audio = VideoToAudioTranslator(video_path, temp_audio_file)
+            # Step 1: Extract audio from video (use local path)
+            video_to_audio = VideoToAudioTranslator(local_path, temp_audio_file)
             
             # Step 2: Transcribe audio to text
-            # Auto-detect device (GPU if available, otherwise CPU)
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            audio_to_text = AudioToTextTranslator(model_name=model_name, device=device)
-            transcription_segments = audio_to_text.transcribe_audio(temp_audio_file)
+            if self.audio_translator:
+                # Use pre-initialized model (recommended)
+                transcription_segments = self.audio_translator.transcribe_audio(temp_audio_file)
+                device = self.audio_translator.device
+            else:
+                # Fallback: create model on demand (not recommended, for backward compatibility)
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                audio_to_text = AudioToTextTranslator(model_name=model_name, device=device)
+                transcription_segments = audio_to_text.transcribe_audio(temp_audio_file)
             
-            # Format the results
+            # Format the results (use original path in output)
             result = {
                 "video_path": video_path,
                 "model_name": model_name,
@@ -107,9 +122,16 @@ class AnalyzeAudioHandler(BaseHandler):
             ]
         
         finally:
-            # Clean up temporary audio file
+            # Clean up temporary files
             if temp_audio_file and os.path.exists(temp_audio_file):
                 try:
                     os.remove(temp_audio_file)
+                except OSError:
+                    pass  # Ignore cleanup errors
+            
+            # Clean up temporary video file if downloaded from S3
+            if is_temp_video and os.path.exists(local_path):
+                try:
+                    os.remove(local_path)
                 except OSError:
                     pass  # Ignore cleanup errors
